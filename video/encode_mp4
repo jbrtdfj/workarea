@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+
+use strict;
+
+use Getopt::Long;
+
+my ($dir, $ext);
+
+GetOptions ("dir=s"      => \$dir,      
+            "extension"  => \$ext) or die("Error in command line arguments\n");
+
+die "missing argument -dir <dir>"      if (!$dir);
+die "directory $dir does not exists"   if (!-d $dir);
+
+
+$ext ||= "avi";
+
+opendir(my $dh, $dir) || die "can't opendir $dir : $!";
+
+my @videoFiles = grep { /.*\.$ext/ } readdir($dh);
+
+foreach my $v (@videoFiles) {
+	my $mp4 = $v; $mp4 =~ s/\.$ext/.mp4/;
+
+	print "/Applications/HandBrakeCLI -i '$dir/$v' -o '$dir/$mp4' --preset Normal\n";
+}
+
+closedir $dh;
