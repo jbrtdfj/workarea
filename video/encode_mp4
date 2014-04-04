@@ -11,26 +11,33 @@ use strict;
 
 use Getopt::Long;
 use File::Find;
+use Pod::Usage;
 
-my ($dir, $ext, $deleteAction, $fileSuffix);
+my ($ext, $deleteAction, $fileSuffix, $help, $man);
 
-GetOptions ("dir=s"      => \$dir,      
-            "extension"  => \$ext,
+GetOptions ("extension"  => \$ext,
             "delete"     => \$deleteAction,
-            "suffix=s"   => \$fileSuffix    ) or die("Error in command line arguments\n");
+            "suffix=s"   => \$fileSuffix,
+            'help|?' => \$help   )  or pod2usage(2);
 
-die "missing argument -dir <dir>"      if (!$dir);
-die "directory $dir does not exists"   if (!-d $dir);
+GetOptions();
+pod2usage(-exitval => 0, -verbose => 2) if $help;
 
+my @dirs = @ARGV;
 
 $ext ||= "avi";
 $fileSuffix = "-$fileSuffix" if ($fileSuffix);
 
 my @videoFiles;
 
-find( sub {
-	push(@videoFiles, $File::Find::name) if (/\.$ext$/);
-	}, $dir);
+foreach my $dir (@dirs) {
+	die "directory $dir does not exists"   if (!-d $dir);
+
+	find( sub {
+		push(@videoFiles, $File::Find::name) if (/\.$ext$/);
+		}, $dir);
+
+}
 
 if ($deleteAction) {
 	generateDeleteScript(sort @videoFiles);
@@ -52,15 +59,10 @@ sub generateDeleteScript {
 	print SCRIPT "#!/bin/sh\n";
 
 	foreach my $v (@files) {
-		# check for file with ' character
-		if ($v =~ /'/) {
-			print "[WARNING] ignoring $v\n";
-			next;
-		}
 		my $mp4 = $v; $mp4 =~ s/\.$ext/.mp4/;
 
 		if (-e $mp4) {
-			print SCRIPT "rm '$v'\n" ;
+			print SCRIPT "rm \"$v\"\n" ;
 			$count++;
 			} else {
 				print "[INFO] no mp4 for $v\n" ;				
@@ -86,15 +88,10 @@ sub generateConvertScript {
 	print SCRIPT "#!/bin/sh\n";
 
 	foreach my $v (@files) {
-		# check for file with ' character
-		if ($v =~ /'/) {
-			print "[WARNING] ignoring $v\n";
-			next;
-		}
 		my $mp4 = $v; $mp4 =~ s/\.$ext/.mp4/;
 
 		$count++;
-		print SCRIPT "/Applications/HandBrakeCLI -i '$v' -o '$mp4' --preset Normal\n";
+		print SCRIPT "/Applications/HandBrakeCLI -i \"$v\" -o \"$mp4\" --preset Normal\n";
 	}
 
 	print "[INFO] $count files to convert\n";
@@ -103,3 +100,47 @@ sub generateConvertScript {
 
 	chmod 0755, $outScript;
 }
+
+__END__
+=head1 NAME 
+
+encode_mp4 - convert movie into mp4 or remove already converted movies. 
+
+=head1 SYNOPSIS
+
+ encode_mp4 [options] <directory>
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-help> 
+
+Print a brief help message and exits.
+
+=item B<-extension> <movie extension>
+
+movie file etension to look for. default = avi
+
+=item B<-delete>
+
+write out a delete script (instead of conversion one)
+
+=item B<-suffix> <script suffix>
+
+suffix added to the generated scripts: convert-<extension>.sh and convert_delete-<extension>.sh 
+
+=back
+
+=head1 DESCRIPTION
+
+This program will process recursively the given directory to find .avi files 
+and generate scripts to either convert the movie into .mp4  (default) or 
+remove movie file already converted into .mp4 if the option -delete is used 
+
+B<Examples>
+
+   encode_mp4 S01           => create convert.sh to convert .avi file of S01 into .mp4
+   encode_mp4 S01 -delete   => create convert_delete.sh to remove .avi file of S01 already converted
+=cut
+
