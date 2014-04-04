@@ -1,28 +1,105 @@
 #!/usr/bin/perl
 
+# Usage:
+#    to generate the concersion script
+#         encode_mp4 -dir <startdir>
+#
+#    To generate the delete scrpt when the mp4 exists
+#         encode_mp4 -dir <startdir> -delete
+#
 use strict;
 
 use Getopt::Long;
+use File::Find;
 
-my ($dir, $ext);
+my ($dir, $ext, $deleteAction, $fileSuffix);
 
 GetOptions ("dir=s"      => \$dir,      
-            "extension"  => \$ext) or die("Error in command line arguments\n");
+            "extension"  => \$ext,
+            "delete"     => \$deleteAction,
+            "suffix=s"   => \$fileSuffix    ) or die("Error in command line arguments\n");
 
 die "missing argument -dir <dir>"      if (!$dir);
 die "directory $dir does not exists"   if (!-d $dir);
 
 
 $ext ||= "avi";
+$fileSuffix = "-$fileSuffix" if ($fileSuffix);
 
-opendir(my $dh, $dir) || die "can't opendir $dir : $!";
+my @videoFiles;
 
-my @videoFiles = grep { /.*\.$ext/ } readdir($dh);
+find( sub {
+	push(@videoFiles, $File::Find::name) if (/\.$ext$/);
+	}, $dir);
 
-foreach my $v (@videoFiles) {
-	my $mp4 = $v; $mp4 =~ s/\.$ext/.mp4/;
-
-	print "/Applications/HandBrakeCLI -i '$dir/$v' -o '$dir/$mp4' --preset Normal\n";
+if ($deleteAction) {
+	generateDeleteScript(sort @videoFiles);
+} else {
+	generateConvertScript(sort @videoFiles);
 }
 
-closedir $dh;
+#------------------------------------------------
+# check if the equivalent mP4 files exist, if yes, add the rm command
+#
+sub generateDeleteScript {
+	my (@files) = @_;
+
+  my $count = 0;
+
+	my $outScript = "convert_delete$fileSuffix.sh";
+	open (SCRIPT, ">$outScript") || die "ERROR cannot open $outScript\n\n";
+
+	print SCRIPT "#!/bin/sh\n";
+
+	foreach my $v (@files) {
+		# check for file with ' character
+		if ($v =~ /'/) {
+			print "[WARNING] ignoring $v\n";
+			next;
+		}
+		my $mp4 = $v; $mp4 =~ s/\.$ext/.mp4/;
+
+		if (-e $mp4) {
+			print SCRIPT "rm '$v'\n" ;
+			$count++;
+			} else {
+				print "[INFO] no mp4 for $v\n" ;				
+			}
+	}
+
+	print "[INFO] $count files to delete\n";
+	print "\n  execute : $outScript\n\n";
+	close SCRIPT;
+
+	chmod 0755, $outScript;
+}
+
+#------------------------------------------------
+sub generateConvertScript {
+	my (@files) = @_;
+
+  my $count = 0;
+
+	my $outScript = "convert$fileSuffix.sh";
+	open (SCRIPT, ">$outScript") || die "ERROR cannot open $outScript\n\n";
+
+	print SCRIPT "#!/bin/sh\n";
+
+	foreach my $v (@files) {
+		# check for file with ' character
+		if ($v =~ /'/) {
+			print "[WARNING] ignoring $v\n";
+			next;
+		}
+		my $mp4 = $v; $mp4 =~ s/\.$ext/.mp4/;
+
+		$count++;
+		print SCRIPT "/Applications/HandBrakeCLI -i '$v' -o '$mp4' --preset Normal\n";
+	}
+
+	print "[INFO] $count files to convert\n";
+	print "\n  execute : $outScript\n\n";
+	close SCRIPT;
+
+	chmod 0755, $outScript;
+}
