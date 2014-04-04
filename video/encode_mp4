@@ -1,12 +1,5 @@
 #!/usr/bin/perl
 
-# Usage:
-#    to generate the concersion script
-#         encode_mp4 -dir <startdir>
-#
-#    To generate the delete scrpt when the mp4 exists
-#         encode_mp4 -dir <startdir> -delete
-#
 use strict;
 
 use Getopt::Long;
