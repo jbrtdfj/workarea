@@ -1,0 +1,169 @@
+#!/usr/bin/perl
+
+use strict;
+
+use Getopt::Long;
+use File::Find;
+use Pod::Usage;
+use Data::Dumper;
+
+my ($ext, $fileSuffix, $help, $man, $videoExt, $addSrt, $mkv2mp4);
+
+GetOptions ("extension"  => \$ext,
+            "suffix=s"   => \$fileSuffix,
+            "srt_mode"   => \$addSrt,
+            "mkv_mode"   => \$mkv2mp4,
+            "delete"     => \$delete,
+            'help|?' => \$help   )  or pod2usage(2);
+
+GetOptions();
+pod2usage(-exitval => 0, -verbose => 2) if $help;
+
+my @dirs = @ARGV;
+
+$fileSuffix = "-$fileSuffix" if ($fileSuffix);
+$videoExt   = "mp4";
+
+if ($addSrt) {
+	my @srtFiles;
+	findFiles(\@dirs, "srt", \@srtFiles);  @srtFiles = sort @srtFiles;
+
+	appendSrtScript(\@srtFiles);
+} 
+elsif ($mkv2mp4) {
+	my @mkvFiles;
+	findFiles(\@dirs, "mkv", \@mkvFiles);  @mkvFiles = sort @mkvFiles;
+
+	convertMkvScript(\@mkvFiles);
+
+} else {
+	pod2usage(-exitval => 0, -verbose => 2);
+}
+
+#------------------------------------------------
+sub convertMkvScript {
+	my ($mkvFiles) = @_;
+
+  my $count = 0;
+
+	my $outScript = "convertmkv$fileSuffix.sh";
+	open (SCRIPT, ">$outScript") || die "ERROR cannot open $outScript\n\n";
+
+	print SCRIPT "#!/bin/sh\n";
+
+	print "\n";
+
+	foreach my $mkv (@$mkvFiles) {
+		$count ++;
+
+		my $mp4 = $mkv;
+		$mp4 =~ s/\.mkv$/.mp4/;
+
+		print SCRIPT "sublerCLI -source \"$mkv\" -dest \"$mp4\"\n";
+
+	}
+
+
+	print "[INFO] $count mkv to convert\n";
+	print "\n  execute : $outScript\n\n";
+	close SCRIPT;
+
+	chmod 0755, $outScript;
+}
+
+#------------------------------------------------
+sub appendSrtScript {
+	my ($srtFiles) = @_;
+
+  my $count = 0;
+
+	my $outScript = "append_srt$fileSuffix.sh";
+	open (SCRIPT, ">$outScript") || die "ERROR cannot open $outScript\n\n";
+
+	print SCRIPT "#!/bin/sh\n";
+
+	print "\n";
+
+	foreach my $srt (@$srtFiles) {
+		$count ++;
+
+		my $v = $srt;
+		$v =~ s/(\.en)?\.srt$/.mp4/;
+
+		print SCRIPT "sublerCLI -source \"$srt\" -dest \"$v\"\n";
+
+		my $vNew = $v;
+		if ($v =~ /\.vo\./) {
+			$vNew =~ s/\.vo/.vost/;
+			print SCRIPT "mv \"$v\" \"$vNew\"\n";		
+		}
+		else {
+			$vNew =~ s/\.mp4$/.vost.mp4/;
+			print SCRIPT "mv \"$v\" \"$vNew\"\n";		
+		}
+
+	}
+
+
+	print "[INFO] $count files to process\n";
+	print "\n  execute : $outScript\n\n";
+	close SCRIPT;
+
+	chmod 0755, $outScript;
+}
+
+#------------------------------------------------
+sub findFiles {
+	my ($dirs, $ext, $files) = @_;
+
+	foreach my $dir (@dirs[0]) {
+		die "directory $dir does not exists"   if (!-d $dir);
+
+		opendir (my $dh, $dir) || die "ERROR cannot open $dir\n";
+		push @$files, grep { /\.$ext$/ } readdir($dh);
+		closedir $dh;
+
+	}
+}
+
+
+__END__
+=head1 NAME 
+
+subler - frontend to subler command line to process multiple files 
+
+=head1 SYNOPSIS
+
+
+subler [options] <directory>
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-help> 
+
+Print a brief help message and exits.
+
+=item B<-srt_mode> 
+
+Append srt to mp4 files
+
+=item B<-mkv_mode> 
+
+Convert mkv to mp4 files
+
+=item B<-suffix> <script suffix>
+
+suffix added to the generated scripts: convert-<extension>.sh and convert_delete-<extension>.sh 
+
+=back
+
+=head1 DESCRIPTION
+
+B<Examples>
+
+   subler -mkv S01           
+   subler -srt S01    
+=cut
+
