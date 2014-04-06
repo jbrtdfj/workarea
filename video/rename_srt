@@ -1,0 +1,174 @@
+#!/usr/bin/perl
+
+use strict;
+
+use Getopt::Long;
+use File::Find;
+use Pod::Usage;
+use Data::Dumper;
+
+my ($ext, $fileSuffix, $help, $man, $videoExt);
+
+GetOptions ("extension"  => \$ext,
+            "video=s"    => \$videoExt,
+            "suffix=s"   => \$fileSuffix,
+            'help|?' => \$help   )  or pod2usage(2);
+
+GetOptions();
+pod2usage(-exitval => 0, -verbose => 2) if $help;
+
+my @dirs = @ARGV;
+
+$fileSuffix = "-$fileSuffix" if ($fileSuffix);
+$videoExt ||= "avi";
+
+my @videoFiles;
+findFiles(\@dirs, $videoExt, \@videoFiles); @videoFiles = sort @videoFiles;
+
+my %videoMap = indexVideo(\@videoFiles);
+
+my @srtFiles;
+findFiles(\@dirs, "srt", \@srtFiles);  @srtFiles = sort @srtFiles;
+
+my %srtMap = indexSrt(\@srtFiles);
+
+checkMap(\%srtMap, \%videoMap);
+
+renameSeriesScript(\%srtMap, \%videoMap);
+
+#------------------------------------------------
+sub renameSeriesScript {
+	my ($srtMap, $videoMap) = @_;
+
+  my $count = 0;
+
+	my $outScript = "rename_srt$fileSuffix.sh";
+	open (SCRIPT, ">$outScript") || die "ERROR cannot open $outScript\n\n";
+
+	print SCRIPT "#!/bin/sh\n";
+
+	print "\n";
+
+	foreach my $index (keys %$srtMap) {
+		$count ++;
+
+		my $v = $videoMap->{$index};
+		$v =~ s/\.(\w+)$/.en.srt/;
+		print SCRIPT "mv \"$srtMap->{$index}\" \"$v\"\n";
+	}
+
+
+	print "[INFO] $count files to rename\n";
+	print "\n  execute : $outScript\n\n";
+	close SCRIPT;
+
+	chmod 0755, $outScript;
+}
+
+
+#-----------------------------------------
+sub checkMap {
+	my ($srtMap, $videoMap) = @_;
+
+	print "\n";
+
+  my $err = 0;
+	foreach my $index (keys %$srtMap) {
+		if (not defined $videoMap->{$index}) {
+			print "[WARNING] no video for $srtMap->{$index} \n";		
+			$err = 1;	
+		}
+	}
+
+	die "\n[ABORT] missing video(s) found \n" if ($err);
+
+}
+
+#-----------------------------------------
+sub indexVideo {
+	my ($files) = @_;
+
+	my %map;
+	foreach my $file (@$files) {
+		if ($file =~ /Season\s*(\d+)\s*Episode\s*(\d+)/) {
+			$map{"S$1E$2"} = $file;
+		}
+		elsif ($file =~ /(\d+)x(\d+)/) {
+			$map{"S$1E$2"} = $file;
+		}
+	}
+
+	return %map;
+}
+
+#-----------------------------------------
+sub indexSrt {
+	my ($files) = @_;
+
+	my %map;
+	foreach my $file (@$files) {
+		if ($file =~ /S(\d+)E(\d+)/) {
+			$map{"S$1E$2"} = $file;
+		}
+		elsif ($file =~ /(\d+)x(\d+)/) {
+			$map{"S$1E$2"} = $file;
+		}
+	}
+
+	return %map;
+}
+
+#------------------------------------------------
+sub findFiles {
+	my ($dirs, $ext, $files) = @_;
+
+	foreach my $dir (@dirs[0]) {
+		die "directory $dir does not exists"   if (!-d $dir);
+
+		opendir (my $dh, $dir) || die "ERROR cannot open $dir\n";
+		push @$files, grep { /\.$ext$/ } readdir($dh);
+		closedir $dh;
+
+	}
+}
+
+
+__END__
+=head1 NAME 
+
+rename_srt - rename srt to name the video. 
+
+=head1 SYNOPSIS
+
+ rename_srt [options] <directory>
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-help> 
+
+Print a brief help message and exits.
+
+=item B<-video> <movie extension>
+
+movie file etension to look for. default = avi
+
+=item B<-suffix> <script suffix>
+
+suffix added to the generated scripts: convert-<extension>.sh and convert_delete-<extension>.sh 
+
+=back
+
+=head1 DESCRIPTION
+
+This program will process recursively the given directory to find .avi files 
+and match the corresponding srt files, and finally generate scripts to rename the srt
+to match the video.
+
+B<Examples>
+
+   rename_srt S01           
+   rename_srt S01 -delete   
+=cut
+
