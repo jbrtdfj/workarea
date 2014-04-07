@@ -20,7 +20,7 @@ pod2usage(-exitval => 0, -verbose => 2) if $help;
 my @dirs = @ARGV;
 
 $fileSuffix = "-$fileSuffix" if ($fileSuffix);
-$videoExt ||= "avi";
+$videoExt ||= "mp4";
 
 my @videoFiles;
 findFiles(\@dirs, $videoExt, \@videoFiles); @videoFiles = sort @videoFiles;
@@ -80,7 +80,7 @@ sub checkMap {
 		}
 	}
 
-	die "\n[ABORT] missing video(s) found \n" if ($err);
+	die "\n[ABORT] missing video(s) found \n" . Dumper($srtMap) . "\n" . Dumper($videoMap) if ($err);
 
 }
 
@@ -125,10 +125,13 @@ sub findFiles {
 	foreach my $dir (@dirs[0]) {
 		die "directory $dir does not exists"   if (!-d $dir);
 
-		opendir (my $dh, $dir) || die "ERROR cannot open $dir\n";
-		push @$files, grep { /\.$ext$/ } readdir($dh);
-		closedir $dh;
+		# opendir (my $dh, $dir) || die "ERROR cannot open $dir\n";
+		# push @$files, grep { /\.$ext$/ } readdir($dh);
+		# closedir $dh;
 
+		find( sub {
+			push(@$files, $File::Find::name) if (/\.$ext$/);
+			}, $dir);
 	}
 }
 

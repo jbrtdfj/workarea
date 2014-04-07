@@ -7,7 +7,7 @@ use File::Find;
 use Pod::Usage;
 use Data::Dumper;
 
-my ($ext, $fileSuffix, $help, $man, $videoExt, $addSrt, $mkv2mp4);
+my ($ext, $fileSuffix, $help, $man, $videoExt, $addSrt, $mkv2mp4, $delete);
 
 GetOptions ("extension"  => \$ext,
             "suffix=s"   => \$fileSuffix,
@@ -46,7 +46,7 @@ sub convertMkvScript {
 
   my $count = 0;
 
-	my $outScript = "convertmkv$fileSuffix.sh";
+	my $outScript = "convert_mkv$fileSuffix.sh";
 	open (SCRIPT, ">$outScript") || die "ERROR cannot open $outScript\n\n";
 
 	print SCRIPT "#!/bin/sh\n";
@@ -59,7 +59,7 @@ sub convertMkvScript {
 		my $mp4 = $mkv;
 		$mp4 =~ s/\.mkv$/.mp4/;
 
-		print SCRIPT "sublerCLI -source \"$mkv\" -dest \"$mp4\"\n";
+		print SCRIPT "/Applications/sublerCLI -source \"$mkv\" -dest \"$mp4\"\n";
 
 	}
 
@@ -90,7 +90,12 @@ sub appendSrtScript {
 		my $v = $srt;
 		$v =~ s/(\.en)?\.srt$/.mp4/;
 
-		print SCRIPT "sublerCLI -source \"$srt\" -dest \"$v\"\n";
+		if (!-f $v) {
+			print "[ERROR] missing $v\n";
+			next;
+		}
+		print SCRIPT "echo \"# $srt\"\n";
+		print SCRIPT "/Applications/sublerCLI -source \"$srt\" -dest \"$v\"\n";
 
 		my $vNew = $v;
 		if ($v =~ /\.vo\./) {
@@ -101,6 +106,8 @@ sub appendSrtScript {
 			$vNew =~ s/\.mp4$/.vost.mp4/;
 			print SCRIPT "mv \"$v\" \"$vNew\"\n";		
 		}
+
+			print SCRIPT "mv \"$srt\" \"${srt}.DONE\"\n";		
 
 	}
 
@@ -116,12 +123,16 @@ sub appendSrtScript {
 sub findFiles {
 	my ($dirs, $ext, $files) = @_;
 
-	foreach my $dir (@dirs[0]) {
+	foreach my $dir (@dirs) {
 		die "directory $dir does not exists"   if (!-d $dir);
 
-		opendir (my $dh, $dir) || die "ERROR cannot open $dir\n";
-		push @$files, grep { /\.$ext$/ } readdir($dh);
-		closedir $dh;
+		find( sub {
+			push(@$files, $File::Find::name) if (/\.$ext$/);
+			}, $dir);
+
+		# opendir (my $dh, $dir) || die "ERROR cannot open $dir\n";
+		# push @$files, grep { /\.$ext$/ } readdir($dh);
+		# closedir $dh;
 
 	}
 }
@@ -163,7 +174,7 @@ suffix added to the generated scripts: convert-<extension>.sh and convert_delete
 
 B<Examples>
 
-   subler -mkv S01           
-   subler -srt S01    
+   subler -mkv S01           	: convert mkv into mp4
+   subler -srt S01    				: add srt inside mp4 (srt filename must use standard convention)
 =cut
 
