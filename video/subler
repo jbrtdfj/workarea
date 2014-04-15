@@ -88,18 +88,29 @@ sub appendSrtScript {
 		$count ++;
 
 		my $v = $srt;
-		$v =~ s/(\.en)?\.srt$/.mp4/;
+		$v =~ s/\.srt$/.mp4/;
 
 		if (!-f $v) {
-			print "[ERROR] missing $v\n";
-			next;
+
+			$v =~ s/(\.en)?\.mp4$/.mp4/;
+
+			if (!-f $v) {
+				print "[ERROR] missing mp4 for $srt\n";
+				next;
+			}
 		}
+
 		print SCRIPT "echo \"# $srt\"\n";
 		print SCRIPT "/Applications/sublerCLI -source \"$srt\" -dest \"$v\"\n";
 
 		my $vNew = $v;
 		if ($v =~ /\.vo\./) {
-			$vNew =~ s/\.vo/.vost/;
+			$vNew =~ s/\.vo(\.en)?/.vost/;
+			print SCRIPT "mv \"$v\" \"$vNew\"\n";		
+		}
+		elsif ($v =~ /\.en\./) { 
+			# .en only
+			$vNew =~ s/\.en\./.vost\./;
 			print SCRIPT "mv \"$v\" \"$vNew\"\n";		
 		}
 		else {
