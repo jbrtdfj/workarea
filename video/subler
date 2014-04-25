@@ -101,7 +101,7 @@ sub appendSrtScript {
 		}
 
 		print SCRIPT "echo \"# $srt\"\n";
-		print SCRIPT "/Applications/sublerCLI -source \"$srt\" -dest \"$v\"\n";
+		print SCRIPT "/Applications/sublerCLI -source \"$srt\" -dest \"$v\" -language English\n";
 
 		my $vNew = $v;
 		if ($v =~ /\.vo\./) {
