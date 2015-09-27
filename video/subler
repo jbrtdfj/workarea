@@ -92,7 +92,7 @@ sub appendSrtScript {
 
 		if (!-f $v) {
 
-			$v =~ s/(\.en)?\.mp4$/.mp4/;
+			$v =~ s/(\.eng?)?\.mp4$/.mp4/;
 
 			if (!-f $v) {
 				print "[ERROR] missing mp4 for $srt\n";
@@ -105,12 +105,12 @@ sub appendSrtScript {
 
 		my $vNew = $v;
 		if ($v =~ /\.vo\./) {
-			$vNew =~ s/\.vo(\.en)?/.vost/;
+			$vNew =~ s/\.vo(\.eng?)?/.vost/;
 			print SCRIPT "mv \"$v\" \"$vNew\"\n";		
 		}
-		elsif ($v =~ /\.en\./) { 
+		elsif ($v =~ /\.eng?\./) { 
 			# .en only
-			$vNew =~ s/\.en\./.vost\./;
+			$vNew =~ s/\.eng?\./.vost\./;
 			print SCRIPT "mv \"$v\" \"$vNew\"\n";		
 		}
 		else {
