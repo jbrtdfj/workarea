@@ -6,11 +6,12 @@ use Getopt::Long;
 use File::Find;
 use Pod::Usage;
 
-my ($ext, $deleteAction, $fileSuffix, $help, $man);
+my ($ext, $deleteAction, $fileSuffix, $help, $man, $bitrate);
 
 GetOptions ("extension"  => \$ext,
             "delete"     => \$deleteAction,
             "suffix=s"   => \$fileSuffix,
+            "bitrate=s"  => \$bitrate,
             'help|?' => \$help   )  or pod2usage(2);
 
 GetOptions();
@@ -80,11 +81,14 @@ sub generateConvertScript {
 
 	print SCRIPT "#!/bin/sh\n";
 
+	my $option;
+	$option = "-b $bitrate -T -2" if ($bitrate);
+
 	foreach my $v (@files) {
 		my $mp4 = $v; $mp4 =~ s/\.$ext/.mp4/;
 
 		$count++;
-		print SCRIPT "/Applications/HandBrakeCLI -i \"$v\" -o \"$mp4\" --preset Normal\n";
+		print SCRIPT "/Applications/HandBrakeCLI $option -i \"$v\" -o \"$mp4\" --preset Normal\n";
 	}
 
 	print "[INFO] $count files to convert\n";
