@@ -8,10 +8,10 @@ use Pod::Usage;
 
 my ($ext, $deleteAction, $fileSuffix, $help, $man, $bitrate);
 
-GetOptions ("extension"  => \$ext,
-            "delete"     => \$deleteAction,
-            "suffix=s"   => \$fileSuffix,
-            "bitrate=s"  => \$bitrate,
+GetOptions ("extension=s"  => \$ext,
+            "delete"       => \$deleteAction,
+            "suffix=s"     => \$fileSuffix,
+            "bitrate=s"    => \$bitrate,
             'help|?' => \$help   )  or pod2usage(2);
 
 GetOptions();
