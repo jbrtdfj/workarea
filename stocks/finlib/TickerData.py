@@ -15,23 +15,28 @@ class TickerData:
     data
     '''
     
-    def __init__(self, name, year, priceRatio=1):
+    def __init__(self, name, year, priceRatio=1, start = None):
       self.name       = name
       self.year       = year
       self.dataLoaded = 0
       self.data       = None
       self.priceRatio = priceRatio
+
+      self.startdate = datetime.date(self.year, 1, 1) if start is None else datetime.date(start[0], start[1], start[2]) 
+      self.enddate   = datetime.date(self.year, 12, 31)
+
+      self.getData()
         
     def getData(self):
       self.dataLoaded = 1
 
-      startdate = datetime.date(self.year, 1, 1)
-      enddate   = datetime.date(self.year, 12, 31)
-
-      fh = finance.fetch_historical_yahoo(self.name, startdate, enddate)
+      fh = finance.fetch_historical_yahoo(self.name, self.startdate, self.enddate)
   
       self.data = mlab.csv2rec(fh); fh.close()
       self.data.sort()
+
+    def price(self, dateIndex):
+      return self.closePrice(dateIndex)
 
     def close(self, time=None):
       return self.data.close
@@ -58,7 +63,6 @@ class TickerData:
       return self.data.high[dateIndex]/self.priceRatio
       
     def gain(self):
-      if self.dataLoaded == 0: self.getData()
       
       d = self.data.close
       res = [float(d[0]), float(d[-1]), 0]
