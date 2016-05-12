@@ -42,29 +42,33 @@ class StrategyBase(object):
   '''--- EXEC TRADE ---------------------------------'''  
   def executeTrade(self):
     if self.isBuyLongTime():
-      trade = TradeLong(self.dateIndex, self.data.price(self.dateIndex))
+      trade = TradeLong(self.dateIndex, self.buyLongPrice())
       trade.buyFor(self.capitalBeforeTrade);
       
       self.capital -= trade.costBuy()
       
       self.curLongTrade.append(trade)
       if StrategyBase.DEBUG:
-        print "%-5d %2d-LBUY  %4.2f %3.1f" % (self.dateIndex, trade.id, trade.buyPrice, self.indicators.value(0, self.dateIndex))
+        print "%-5d %2d-LBUY  %4.2f %3.1f %.0f" % (self.dateIndex, trade.id, 
+                                              trade.buyPrice, 
+                                              self.indicators.value(0, self.dateIndex),
+                                              self.totalGain())
 
     if self.isSellLongTime():
       trade = self.curLongTrade.pop()
-      trade.sell(self.dateIndex, self.data.price(self.dateIndex))
+      trade.sell(self.dateIndex, self.sellLongPrice())
 
       self.capital += trade.costSell()
 
       self.doneLongTrade.append(trade)
       if StrategyBase.DEBUG:
-        print "%-5d %2d-LSELL %4.2f %3.1f : %-2.2f%s" % (self.dateIndex, trade.id, trade.sellPrice, 
+        print "%-5d %2d-LSELL %4.2f %3.1f : %-2.2f%s %.0f" % (self.dateIndex, trade.id, trade.sellPrice, 
                                                   self.indicators.value(0, self.dateIndex), 
-                                                  trade.gain(1), "%")
+                                                  trade.gain(1), "%",
+                                                  self.totalGain())
       
     if self.isBuyShortTime():
-      trade = TradeShort(self.dateIndex, self.data.price(self.dateIndex))
+      trade = TradeShort(self.dateIndex, self.buyShortPrice())
       trade.buyFor(self.capitalBeforeTrade);
       
       self.capital -= trade.costBuy()
@@ -75,7 +79,7 @@ class StrategyBase(object):
       
     if self.isSellShortTime():
       trade = self.curShortTrade.pop()
-      trade.sell(self.dateIndex, self.data.price(self.dateIndex))
+      trade.sell(self.dateIndex, self.sellShortPrice())
 
       self.capital += trade.costSell()
 
@@ -95,6 +99,9 @@ class StrategyBase(object):
     ''' called when no other long trade is on going '''
     return False
 
+  def buyLongPrice(self):  
+    return self.data.closePrice(self.dateIndex)
+
   def isSellLongTime(self):
     if not self.hasCurrentLongTrade(): return False 
   
@@ -103,6 +110,9 @@ class StrategyBase(object):
   def sellLongCondition(self):   # !! OVERRIDE !!
     ''' called when a long trade is on going '''
     return False
+
+  def sellLongPrice(self):  
+    return self.data.closePrice(self.dateIndex)
 
   '''--- SHORT TRADE ---------------------------------'''  
   def isBuyShortTime(self):
@@ -114,6 +124,9 @@ class StrategyBase(object):
     ''' called when no other short trade is on going '''
     return False
 
+  def buyShortPrice(self):  
+    return self.data.closePrice(self.dateIndex)
+
   def isSellShortTime(self):
     if not self.hasCurrentShortTrade(): return False 
   
@@ -122,6 +135,9 @@ class StrategyBase(object):
   def sellShortCondition(self):   # !! OVERRIDE !!
     ''' called when a long trade is on going '''
     return False
+
+  def sellShortPrice(self):  
+    return self.data.closePrice(self.dateIndex)
 
   '''--- STATUS TRADE ---------------------------------'''  
   def hasCurrentLongTrade(self):

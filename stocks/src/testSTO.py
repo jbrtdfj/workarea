@@ -8,7 +8,7 @@ from finlib.StrategyBase import StrategyBase
 from finlib.TickerIndicators import  TickerIndicators
 from Strategies.StrategySTO import StrategySTO
 
-from BackTester import BackTester
+from finlib.BackTester import BackTester
 
 import matplotlib.pyplot  as plt
 

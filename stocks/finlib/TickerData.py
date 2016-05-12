@@ -35,9 +35,6 @@ class TickerData:
       self.data = mlab.csv2rec(fh); fh.close()
       self.data.sort()
 
-    def price(self, dateIndex):
-      return self.closePrice(dateIndex)
-
     def close(self, time=None):
       return self.data.close
 
